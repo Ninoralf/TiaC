@@ -210,11 +210,8 @@
 
                                 <input type="email"
                                        id="Email"
-                                       name="Email"
                                        value="@Model.Email"
-                                       placeholder="name@email.com"
                                        class="form-control profile-input"
-                                       data-editable="true"
                                        readonly />
                             </div>
                         </div>
@@ -253,17 +250,14 @@
                             </div>
                         </div>
 
-                        @* Forgot password *@
+                        @* Info Correction *@
                         <div class="col-12 mb-1">
-                            <a href="#"
-                               class="dash-link"
-                               data-toggle="modal"
-                               data-target="#changePasswordModal"
-                               data-bs-toggle="modal"
-                               data-bs-target="#changePasswordModal">
-
-                                <i class="fa-solid fa-key"></i> Forgot password?
-                            </a>
+                            <div class="dash-muted small">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Your name, ID and email are verified records. To correct them, use
+                                <strong>Request Info Change</strong>. An administrator will review your proof.
+                                <a asp-controller="InfoRequest" asp-action="Create" class="dash-link ms-1">View my requests</a>
+                            </div>
                         </div>
 
                     </div>
@@ -272,25 +266,49 @@
         </div>
 
         @* ===== Actions ===== *@
-        <div class="d-flex justify-content-end profile-actions">
+        <div class="d-flex justify-content-between align-items-center flex-wrap profile-actions">
 
-            <button type="button"
-                    id="editBtn"
-                    class="btn profile-action profile-action-edit">
+            <div class="d-flex flex-wrap">
+                <button type="button"
+                        class="btn profile-action profile-action-edit"
+                        data-bs-toggle="modal"
+                        data-bs-target="#changePasswordModal">
 
-                <i class="fa-solid fa-pen"></i> Edit Profile
-            </button>
+                    <i class="fa-solid fa-key"></i> Change Password
+                </button>
 
-            <button type="submit"
-                    id="saveBtn"
-                    class="btn profile-action profile-action-save ml-3 ms-3"
-                    disabled>
+                <button type="button"
+                        class="btn profile-action profile-action-edit ms-3"
+                        data-bs-toggle="modal"
+                        data-bs-target="#infoChangeModal">
 
-                <i class="fa-regular fa-floppy-disk"></i> Save Changes
-            </button>
+                    <i class="fa-solid fa-file-pen"></i> Request Info Change
+                </button>
+            </div>
+
+            <div class="d-flex">
+                <button type="button" id="editBtn" class="btn profile-action profile-action-edit">
+                    <i class="fa-solid fa-pen"></i> Edit Contact
+                </button>
+
+                <button type="submit" id="saveBtn" class="btn profile-action profile-action-save ms-3" disabled>
+                    <i class="fa-regular fa-floppy-disk"></i> Save Changes
+                </button>
+            </div>
 
         </div>
-
+        @{
+            var infoModal = new ASI.Basecode.Services.ServiceModels.InfoChangeModalModel
+            {
+                FirstName = Model.FirstName,
+                MiddleName = Model.MiddleName,
+                LastName = Model.LastName,
+                UserCode = Model.UserId,
+                IdLabel = "Student ID",
+                Email = Model.Email
+            };
+        }
+        <partial name="_InfoChangeRequestModal" model="infoModal" />
     </form>
 
     @* ===== Change password modal ===== *@
@@ -424,48 +442,46 @@
 @section scripts {
 
     <script>
-        (function () {
+        (function() {
             var editBtn = document.getElementById('editBtn');
             var saveBtn = document.getElementById('saveBtn');
-
-            var inputs = document.querySelectorAll(
-                '.profile-input[data-editable="true"]'
-            );
-
-            var editing = false;
-
-            // Edit / cancel toggle
-            editBtn.addEventListener('click', function () {
-
-                editing = !editing;
-
-                inputs.forEach(function (input) {
-                    input.readOnly = !editing;
-                    input.classList.toggle('is-editing', editing);
-                });
-
-                saveBtn.disabled = !editing;
-
-                editBtn.innerHTML = editing
-                    ? '<i class="fa-solid fa-xmark"></i> Cancel'
-                    : '<i class="fa-solid fa-pen"></i> Edit Profile';
-
-                if (editing && inputs.length) {
-                    inputs[0].focus();
-                }
-            });
-
-            // Photo preview (+ type and 5 MB check before uploading)
             var photoInput = document.getElementById('photoInput');
             var preview = document.getElementById('photoPreview');
             var icon = document.getElementById('photoIcon');
+
+            // Only the contact number is editable here
+            var inputs = document.querySelectorAll('.profile-input[data-editable="true"]');
+            var originals = Array.prototype.map.call(inputs, function(i) { return i.value; });
+            var editing = false;
             var allowed = ['image/jpeg', 'image/png', 'image/webp'];
 
+            function hasPhoto() {
+                return photoInput && photoInput.files && photoInput.files.length > 0;
+            }
+
+            editBtn.addEventListener('click', function() {
+                editing = !editing;
+
+                inputs.forEach(function(input, i) {
+                    input.readOnly = !editing;
+                    input.classList.toggle('is-editing', editing);
+                    if (!editing) { input.value = originals[i]; }
+                });
+
+                // Save stays available when a new photo was chosen
+                saveBtn.disabled = !editing && !hasPhoto();
+
+                editBtn.innerHTML = editing
+                    ? '<i class="fa-solid fa-xmark"></i> Cancel'
+                    : '<i class="fa-solid fa-pen"></i> Edit Contact';
+
+                if (editing && inputs.length) { inputs[0].focus(); }
+            });
+
+            // Photo preview (+ type and 5 MB check before uploading)
             if (photoInput) {
-                photoInput.addEventListener('change', function () {
-
+                photoInput.addEventListener('change', function() {
                     var file = photoInput.files && photoInput.files[0];
-
                     if (!file) return;
 
                     if (allowed.indexOf(file.type) === -1) {
@@ -473,7 +489,6 @@
                         photoInput.value = '';
                         return;
                     }
-
                     if (file.size > 5 * 1024 * 1024) {
                         alert('The photo must be 5 MB or smaller.');
                         photoInput.value = '';
@@ -482,13 +497,10 @@
 
                     preview.src = URL.createObjectURL(file);
                     preview.classList.remove('d-none');
-
                     if (icon) icon.classList.add('d-none');
-
                     saveBtn.disabled = false;
                 });
             }
-
         })();
     </script>
 

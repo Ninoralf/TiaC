@@ -317,8 +317,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return View(model);
         }
 
-        // Custodians can only change their contact number and photo here.
-        // Name, ID and email go through an information change request.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Profile(string contactNumber, IFormFile photo)
@@ -339,13 +337,57 @@ namespace ASI.Basecode.WebApp.Controllers
 
             if (result.Success)
             {
-                if (newPhoto != null) _profilePhotos.Delete(oldPhoto);   // replaced photo: remove the old file
+                if (newPhoto != null) _profilePhotos.Delete(oldPhoto);
                 TempData["SuccessMessage"] = result.Message;
             }
             else
             {
-                _profilePhotos.Delete(newPhoto);                         // save failed: drop the new upload
+                _profilePhotos.Delete(newPhoto);
                 TempData["ErrorMessage"] = result.Message;
+            }
+
+            return RedirectToAction(nameof(Profile));
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ChangePassword(string currentPassword, string newPassword, string confirmPassword)
+        {
+            if (string.IsNullOrEmpty(currentPassword) || string.IsNullOrEmpty(newPassword) || string.IsNullOrEmpty(confirmPassword))
+            {
+                TempData["ErrorMessage"] = "Please fill in all password fields.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            if (newPassword.Length < 8)
+            {
+                TempData["ErrorMessage"] = "New password must be at least 8 characters.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            if (newPassword != confirmPassword)
+            {
+                TempData["ErrorMessage"] = "New password and confirmation do not match.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            if (newPassword == currentPassword)
+            {
+                TempData["ErrorMessage"] = "New password must be different from the current one.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            // Assuming ChangePassword returns a bool (true on success, false on failure)
+            bool isSuccess = _userService.ChangePassword(CurrentUserCode, currentPassword, newPassword);
+
+            if (isSuccess)
+            {
+                TempData["SuccessMessage"] = "Password updated successfully.";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Failed to update password. Please check your current password and try again.";
             }
 
             return RedirectToAction(nameof(Profile));
@@ -370,7 +412,6 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToAction(nameof(Settings));
             }
 
-            // Keep what the custodian typed, and show why it was refused
             ViewBag.Error = result.Message;
             return View("Settings", model ?? _settingsService.Get());
         }

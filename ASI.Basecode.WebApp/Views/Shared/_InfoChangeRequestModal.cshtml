@@ -1,0 +1,183 @@
+﻿@model ASI.Basecode.Services.ServiceModels.InfoChangeModalModel
+
+<style>
+    #infoChangeModal .is-changed {
+        border-color: #f0ad4e !important;
+        background-color: #fffaf0 !important;
+    }
+</style>
+
+<div class="modal fade" id="infoChangeModal" tabindex="-1" aria-labelledby="infoChangeTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content profile-modal">
+
+            <form asp-controller="InfoRequest" asp-action="Create" method="post"
+                  enctype="multipart/form-data" id="infoChangeForm" novalidate>
+
+                @Html.AntiForgeryToken()
+
+                <div class="modal-header profile-modal-header">
+                    <h5 class="modal-title dash-section-title" id="infoChangeTitle">
+                        <i class="fa-solid fa-file-pen"></i> Request an Information Change
+                    </h5>
+                    <button type="button" class="profile-modal-close" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <p class="small dash-muted">
+                        Edit only the details that are wrong. Changed fields are highlighted.
+                        An administrator will review your request and your proof.
+                    </p>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="profile-label" for="icFirstName">First Name</label>
+                            <input type="text" id="icFirstName" name="FirstName" value="@Model.FirstName"
+                                   data-original="@Model.FirstName" maxlength="50" required
+                                   class="form-control profile-input" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="profile-label" for="icMiddleName">Middle Name</label>
+                            <input type="text" id="icMiddleName" name="MiddleName" value="@Model.MiddleName"
+                                   data-original="@Model.MiddleName" maxlength="50"
+                                   class="form-control profile-input" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="profile-label" for="icLastName">Last Name</label>
+                            <input type="text" id="icLastName" name="LastName" value="@Model.LastName"
+                                   data-original="@Model.LastName" maxlength="50" required
+                                   class="form-control profile-input" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="profile-label" for="icUserCode">@Model.IdLabel</label>
+                            <input type="text" id="icUserCode" name="UserCode" value="@Model.UserCode"
+                                   data-original="@Model.UserCode" maxlength="50" required
+                                   class="form-control profile-input" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="profile-label" for="icEmail">Email Address</label>
+                            <input type="email" id="icEmail" name="Email" value="@Model.Email"
+                                   data-original="@Model.Email" maxlength="100" required
+                                   class="form-control profile-input" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="profile-label" for="icReason">What is wrong, and what is correct?</label>
+                        <textarea id="icReason" name="Reason" rows="3" minlength="10" maxlength="500" required
+                                  class="form-control profile-input"
+                                  placeholder="e.g. My last name is misspelled. My school ID shows the correct spelling."></textarea>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="profile-label" for="icProofs">Proof photos (1 to 3)</label>
+                        <input type="file" id="icProofs" name="proofs" multiple required
+                               accept="image/png,image/jpeg,image/webp" class="form-control profile-input" />
+                        <small class="dash-muted">
+                            A clear photo of your school ID or another official document that shows the correct details.
+                            JPG, PNG or WEBP, up to 5 MB each. Only administrators can see them.
+                        </small>
+                        <ul id="icProofList" class="small dash-muted mt-2 mb-0"></ul>
+                    </div>
+
+                    <div id="icError" class="text-danger small mt-2 d-none"></div>
+                </div>
+
+                <div class="modal-footer profile-modal-footer">
+                    <button type="button" class="btn profile-action profile-action-edit" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn profile-action profile-action-save">
+                        <i class="fa-solid fa-paper-plane"></i> Send Request
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        var form = document.getElementById('infoChangeForm');
+        if (!form) return;
+
+        var MAX_FILES = 3;
+        var MAX_BYTES = 5 * 1024 * 1024;
+
+        var fields = form.querySelectorAll('[data-original]');
+        var proofs = document.getElementById('icProofs');
+        var list = document.getElementById('icProofList');
+        var errorBox = document.getElementById('icError');
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.classList.remove('d-none');
+        }
+
+        function isChanged(el) {
+            return el.value.trim() !== (el.getAttribute('data-original') || '').trim();
+        }
+
+        // Highlight the fields that were changed
+        fields.forEach(function(el) {
+            el.addEventListener('input', function() {
+                el.classList.toggle('is-changed', isChanged(el));
+            });
+        });
+
+        // Photo checks before sending (the server checks again)
+        proofs.addEventListener('change', function() {
+            list.textContent = '';
+
+            if (proofs.files.length > MAX_FILES) {
+                alert('You can attach up to 3 photos.');
+                proofs.value = '';
+                return;
+            }
+            for (var i = 0; i < proofs.files.length; i++) {
+                if (proofs.files[i].size > MAX_BYTES) {
+                    alert(proofs.files[i].name + ' is larger than 5 MB.');
+                    proofs.value = '';
+                    return;
+                }
+            }
+            Array.prototype.forEach.call(proofs.files, function(f) {
+                var li = document.createElement('li');
+                li.textContent = f.name;
+                list.appendChild(li);
+            });
+        });
+
+        form.addEventListener('submit', function(e) {
+            var changed = 0;
+            fields.forEach(function(el) { if (isChanged(el)) changed++; });
+
+            if (changed === 0) {
+                e.preventDefault();
+                return showError('You did not change anything. Edit the details that are wrong first.');
+            }
+            if (document.getElementById('icReason').value.trim().length < 10) {
+                e.preventDefault();
+                return showError('Please explain what is wrong in at least 10 characters.');
+            }
+            if (!proofs.files.length) {
+                e.preventDefault();
+                return showError('Please attach at least one proof photo.');
+            }
+            errorBox.classList.add('d-none');
+        });
+
+        // Reset the form whenever the popup closes
+        var modal = document.getElementById('infoChangeModal');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function() {
+                form.reset();
+                list.textContent = '';
+                errorBox.classList.add('d-none');
+                fields.forEach(function(el) { el.classList.remove('is-changed'); });
+            });
+        }
+    })();
+</script>
